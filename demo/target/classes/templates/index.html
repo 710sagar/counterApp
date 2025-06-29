@@ -12,6 +12,29 @@
         h2 {
             color: #333;
         }
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .tab-button {
+            background-color: #ddd;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            margin-right: 5px;
+        }
+        .tab-button.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
         .gate-section {
             background-color: #fff;
             border: 1px solid #ccc;
@@ -66,6 +89,24 @@
                 document.getElementById('resetForm').submit();
             }
         }
+
+        function switchTab(tabId) {
+            const buttons = document.querySelectorAll('.tab-button');
+            const contents = document.querySelectorAll('.tab-content');
+
+            buttons.forEach(btn => btn.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab-button[data-tab='${tabId}']`).classList.add('active');
+
+            localStorage.setItem('selectedTab', tabId);
+        }
+
+        window.onload = function() {
+            const savedTab = localStorage.getItem('selectedTab') || 'gateA';
+            switchTab(savedTab);
+        }
     </script>
 </head>
 <body>
@@ -77,49 +118,59 @@
     </div>
 </div>
 <hr/>
-<div class="gate-section">
-    <div class="gate-title">Gate A</div>
-    <form action="/enter-single" method="post">
-        <input type="hidden" name="gate" value="A">
-        <button type="submit">Single Entry</button>
-    </form>
-    <form action="/enter-multiple" method="post">
-        <label>Multiple:</label>
-        <input type="number" name="count" value="1" min="1" required>
-        <input type="hidden" name="gate" value="A">
-        <button type="submit">Add Cars</button>
-    </form>
+<div class="tabs">
+    <button class="tab-button" data-tab="gateA" onclick="switchTab('gateA')">Gate A</button>
+    <button class="tab-button" data-tab="gateB" onclick="switchTab('gateB')">Gate B</button>
+    <button class="tab-button" data-tab="gateC" onclick="switchTab('gateC')">Gate C</button>
 </div>
 
-<div class="gate-section">
-    <div class="gate-title">Gate B</div>
-    <form action="/enter-single" method="post">
-        <input type="hidden" name="gate" value="B">
-        <button type="submit">Single Entry</button>
-    </form>
-    <form action="/enter-multiple" method="post">
-        <label>Multiple:</label>
-        <input type="number" name="count" value="1" min="1" required>
-        <input type="hidden" name="gate" value="B">
-        <button type="submit">Add Cars</button>
-    </form>
+<div id="gateA" class="tab-content">
+    <div class="gate-section">
+        <div class="gate-title">Gate A</div>
+        <form action="/enter-single" method="post">
+            <input type="hidden" name="gate" value="A">
+            <button type="submit">Single Entry</button>
+        </form>
+        <form action="/enter-multiple" method="post">
+            <label>Multiple:</label>
+            <input type="number" name="count" value="1" min="1" required>
+            <input type="hidden" name="gate" value="A">
+            <button type="submit">Add Cars</button>
+        </form>
+    </div>
 </div>
 
-<div class="gate-section">
-    <div class="gate-title">Gate C</div>
-    <form action="/enter-single" method="post">
-        <input type="hidden" name="gate" value="C">
-        <button type="submit">Single Entry</button>
-    </form>
-    <form action="/enter-multiple" method="post">
-        <label>Multiple:</label>
-        <input type="number" name="count" value="1" min="1" required>
-        <input type="hidden" name="gate" value="C">
-        <button type="submit">Add Cars</button>
-    </form>
+<div id="gateB" class="tab-content">
+    <div class="gate-section">
+        <div class="gate-title">Gate B</div>
+        <form action="/enter-single" method="post">
+            <input type="hidden" name="gate" value="B">
+            <button type="submit">Single Entry</button>
+        </form>
+        <form action="/enter-multiple" method="post">
+            <label>Multiple:</label>
+            <input type="number" name="count" value="1" min="1" required>
+            <input type="hidden" name="gate" value="B">
+            <button type="submit">Add Cars</button>
+        </form>
+    </div>
 </div>
 
-
+<div id="gateC" class="tab-content">
+    <div class="gate-section">
+        <div class="gate-title">Gate C</div>
+        <form action="/enter-single" method="post">
+            <input type="hidden" name="gate" value="C">
+            <button type="submit">Single Entry</button>
+        </form>
+        <form action="/enter-multiple" method="post">
+            <label>Multiple:</label>
+            <input type="number" name="count" value="1" min="1" required>
+            <input type="hidden" name="gate" value="C">
+            <button type="submit">Add Cars</button>
+        </form>
+    </div>
+</div>
 
 <div class="reset-section">
     <form id="resetForm" action="/reset" method="post">
