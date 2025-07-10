@@ -1,0 +1,391 @@
+/* Parking Entry Tracker Styles */
+
+/* Root Variables */
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    --secondary-color: #6c757d;
+    --dark-color: #212529;
+    --light-bg: #f8f9fa;
+    --border-radius: 0.5rem;
+    --box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    --box-shadow-hover: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+/* Global Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--light-bg);
+    min-height: 100vh;
+}
+
+/* Typography - Larger text for elderly users */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+}
+
+/* Selected Lot Display */
+.selected-lot-display {
+    border: 2px solid var(--info-color);
+    background-color: #e7f3ff;
+    font-size: 1.25rem;
+    padding: 1.5rem;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    box-shadow: var(--box-shadow-hover);
+}
+
+.card-header {
+    border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Buttons - Larger and more spaced for elderly users */
+.btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    margin: 0.5rem;
+    min-height: 3.5rem;
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.25rem;
+    min-height: 4rem;
+}
+
+/* Entry Type Buttons */
+.entry-type-btn {
+    height: 5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+/* Entry Count Cards */
+.entry-count-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.entry-count-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--box-shadow-hover);
+}
+
+.entry-count-card .count-number {
+    font-size: 3rem;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.entry-count-card .count-label {
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+
+/* Color coding for entry types */
+.entry-count-card.registered {
+    border-top: 4px solid var(--primary-color);
+}
+
+.entry-count-card.usa {
+    border-top: 4px solid var(--warning-color);
+}
+
+.entry-count-card.non-registered {
+    border-top: 4px solid var(--danger-color);
+}
+
+.entry-count-card.family-area {
+    border-top: 4px solid var(--success-color);
+}
+
+.entry-count-card.snp {
+    border-top: 4px solid var(--secondary-color);
+}
+
+.entry-count-card.normal-lot {
+    border-top: 4px solid var(--dark-color);
+}
+
+/* Modal Styles */
+.modal-content {
+    border-radius: var(--border-radius);
+    border: none;
+}
+
+.modal-header {
+    border-bottom: none;
+}
+
+.modal-footer {
+    border-top: none;
+}
+
+.lot-option {
+    height: 4rem;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+/* Form Controls */
+.form-control, .form-select {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    min-height: 3rem;
+}
+
+.form-control-lg, .form-select-lg {
+    font-size: 1.25rem;
+    padding: 1rem 1.25rem;
+    min-height: 3.5rem;
+}
+
+.form-label {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Table Styles */
+.table {
+    font-size: 1rem;
+}
+
+.table th, .table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Loading Spinner */
+.spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Toast Styles */
+.toast {
+    font-size: 1.1rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+
+    .navbar .d-flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+        margin: 0.25rem;
+    }
+
+    .btn-lg {
+        font-size: 1.1rem;
+        padding: 0.875rem 1.5rem;
+    }
+
+    .entry-type-btn {
+        height: 4rem;
+        font-size: 1.1rem;
+    }
+
+    .entry-count-card .count-number {
+        font-size: 2.5rem;
+    }
+
+    .entry-count-card .count-label {
+        font-size: 1rem;
+    }
+
+    .table {
+        font-size: 0.9rem;
+    }
+
+    .table th, .table td {
+        padding: 0.75rem;
+    }
+
+    .selected-lot-display h2 {
+        font-size: 1.5rem;
+    }
+
+    .card-header h4 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .lot-option {
+        height: 3.5rem;
+        font-size: 1rem;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+}
+
+/* Tablet Specific Styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .btn-lg {
+        padding: 1rem 1.75rem;
+        font-size: 1.2rem;
+    }
+
+    .entry-type-btn {
+        height: 4.5rem;
+    }
+
+    .entry-count-card {
+        padding: 1.5rem;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid #000;
+    }
+
+    .btn {
+        border: 2px solid;
+    }
+
+    .entry-count-card {
+        border: 2px solid #000;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+
+    .card {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+    }
+
+    .entry-count-card {
+        background-color: #2a2a2a;
+    }
+
+    .modal-content {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+    }
+
+    .form-control, .form-select {
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+        border-color: #4a4a4a;
+    }
+
+    .table {
+        color: #e0e0e0;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .btn, .navbar, .modal, #changeLotBtn, #selectLotBtn {
+        display: none !important;
+    }
+
+    .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+
+    body {
+        background-color: white;
+    }
+}

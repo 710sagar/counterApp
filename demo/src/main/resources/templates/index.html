@@ -4,213 +4,291 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parking Car Entry Tracker</title>
+    <!-- CSRF Token for AJAX requests -->
+    <meta th:name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:name="_csrf_header" th:content="${_csrf.headerName}"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .selected-lot {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #007bff;
-        }
-        .container {
-            max-width: 800px;
-        }
-        .error-message {
-            color: red;
-            display: none;
-        }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
 </head>
 <body>
-<div class="container mt-4">
-    <h1 class="text-center mb-4">Parking Car Entry Tracker</h1>
-    <div class="d-flex justify-content-between mb-3">
-        <div>
-            Logged in as: <span id="username" th:text="${username}"></span> (<span id="role" th:text="${role}"></span>)
-        </div>
-        <a th:href="@{/logout}" class="btn btn-outline-danger">Logout</a>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-header">Select Lot</div>
-        <div class="card-body">
-            <form id="lotForm" class="row g-3">
-                <div class="col-md-8">
-                    <label for="lotSelect" class="form-label">Select Lot:</label>
-                    <select id="lotSelect" class="form-select" th:value="${selectedLot}">
-                        <option value="" th:selected="${selectedLot == null}">Select a lot</option>
-                        <option th:each="gate : ${allGates}" th:value="${gate}" th:text="${gate}"></option>
-                    </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Set Lot</button>
-                </div>
+<!-- Header -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <h1 class="navbar-brand mb-0 h1">
+            <i class="fas fa-car me-2"></i>
+            Parking Entry Tracker
+        </h1>
+        <div class="d-flex align-items-center">
+                <span class="text-light me-3">
+                    <i class="fas fa-user me-1"></i>
+                    <span id="username" th:text="${username}"></span>
+                    (<span id="role" th:text="${role}"></span>)
+                </span>
+            <button id="changeLotBtn" class="btn btn-outline-light me-2">
+                <i class="fas fa-exchange-alt me-1"></i>
+                Change Lot
+            </button>
+            <form th:action="@{/logout}" method="post" class="d-inline">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-outline-light">
+                    <i class="fas fa-sign-out-alt me-1"></i>
+                    Logout
+                </button>
             </form>
-            <div class="mt-3">
-                Current Lot: <span class="selected-lot" th:text="${selectedLot != null ? selectedLot : 'None'}"></span>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container-fluid mt-4">
+    <!-- Selected Lot Display -->
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center selected-lot-display" th:if="${selectedLot != null}">
+                <h2 class="mb-0">
+                    <i class="fas fa-parking me-2"></i>
+                    Current Lot: <span th:text="${selectedLot}"></span>
+                </h2>
             </div>
-        </div>
-    </div>
-
-    <!-- Admin-only: All lots entry counts table -->
-    <div class="card mb-4" th:if="${isAdmin}">
-        <div class="card-header">All Lots Entry Counts (Admin View)</div>
-        <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                <tr>
-                    <th>Lot</th>
-                    <th>Entry Count</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="gate : ${allGates}">
-                    <td th:text="${gate}"></td>
-                    <td th:text="${countMap.get(gate) != null ? countMap.get(gate) : 0}"></td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Non-admin: Selected lot count only -->
-    <div class="card mb-4" th:if="${!isAdmin}">
-        <div class="card-header">Current Entry Count</div>
-        <div class="card-body">
-            <div th:if="${selectedLot != null}">
-                <h4>
-                    Count for <span th:text="${selectedLot}"></span>:
-                    <span class="badge bg-primary fs-5" th:text="${countMap.get(selectedLot) != null ? countMap.get(selectedLot) : 0}"></span>
+            <div class="alert alert-warning text-center" th:if="${selectedLot == null}">
+                <h4 class="mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No Lot Selected
                 </h4>
             </div>
-            <div th:if="${selectedLot == null}">
-                <p class="text-muted">Please select a lot to view counts.</p>
-            </div>
         </div>
     </div>
 
-    <div class="card mb-4" th:if="${selectedLot != null}">
-        <div class="card-header">Add Entries for <span th:text="${selectedLot}"></span></div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-12">
-                    <button id="addSingleEntry" class="btn btn-success">Add Single Entry</button>
+    <!-- Entry Counters for Non-Admin Users -->
+    <div class="row mt-4" th:if="${!isAdmin and selectedLot != null}">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Entry Counts for <span th:text="${selectedLot}"></span>
+                    </h4>
                 </div>
-                <div class="col-md-8">
-                    <label for="entryCount" class="form-label">Add Multiple Entries:</label>
-                    <input type="number" id="entryCount" class="form-control" min="1" value="1">
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button id="addMultipleEntries" class="btn btn-success w-100">Add</button>
-                </div>
-                <div class="col-12">
-                    <p id="entryError" class="error-message">Please enter a valid number of entries.</p>
+                <div class="card-body">
+                    <div class="row g-3" id="entryCountsContainer">
+                        <!-- Entry counts will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-4" th:if="${selectedLot == null}">
-        <div class="card-body text-center">
-            <p class="text-muted">Please select a lot to add entries.</p>
+    <!-- Admin View - All Lots -->
+    <div class="row mt-4 admin-only" th:if="${isAdmin}">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        All Lots Overview (Admin)
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>Lot</th>
+                                <th>Registered</th>
+                                <th>USA</th>
+                                <th>Non-registered</th>
+                                <th>Family Area</th>
+                                <th>SNP</th>
+                                <th>Normal Lot</th>
+                                <th>Total</th>
+                            </tr>
+                            </thead>
+                            <tbody id="adminTableBody">
+                            <!-- Table rows will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Admin-only: Reset controls -->
-    <div class="card mb-4" th:if="${isAdmin}">
-        <div class="card-header">Admin Controls</div>
-        <div class="card-body">
-            <button id="resetEntries" class="btn btn-danger">Reset All Entries for Today</button>
-            <p class="text-muted mt-2 mb-0">
-                <small>This will delete all entries for today across all lots. This action cannot be undone.</small>
-            </p>
+    <!-- Entry Buttons -->
+    <div class="row mt-4" th:if="${selectedLot != null}">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Add Entries for <span th:text="${selectedLot}"></span>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3" id="entryButtonsContainer">
+                        <!-- Entry buttons will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Multiple Entry Section -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-layer-group me-2"></i>
+                                        Add Multiple Entries
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="multipleEntryType" class="form-label">Entry Type:</label>
+                                            <select id="multipleEntryType" class="form-select form-select-lg">
+                                                <!-- Options will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="entryCount" class="form-label">Count:</label>
+                                            <input type="number" id="entryCount" class="form-control form-control-lg"
+                                                   min="1" max="50" value="1">
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <button id="addMultipleEntries" class="btn btn-success btn-lg w-100">
+                                                <i class="fas fa-plus me-2"></i>
+                                                Add Multiple
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Actions -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <button id="undoLastEntry" class="btn btn-outline-danger btn-lg w-100">
+                                <i class="fas fa-undo me-2"></i>
+                                Undo My Last Entry
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button id="refreshData" class="btn btn-outline-primary btn-lg w-100">
+                                <i class="fas fa-sync-alt me-2"></i>
+                                Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Controls -->
+    <div class="row mt-4 admin-only" th:if="${isAdmin}">
+        <div class="col-12">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        Admin Controls
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <button id="resetEntries" class="btn btn-danger btn-lg w-100">
+                                <i class="fas fa-trash-alt me-2"></i>
+                                Reset All Entries for Today
+                            </button>
+                            <small class="text-muted mt-2 d-block text-center">
+                                This will mark all entries for today as deleted. This action cannot be undone.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Lot Selected Message -->
+    <div class="row mt-4" th:if="${selectedLot == null}">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-parking fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">Please select a lot to start tracking entries</h4>
+                    <button id="selectLotBtn" class="btn btn-primary btn-lg mt-3">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Select Lot
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Lot Selection Modal -->
+<div class="modal fade" id="lotSelectionModal" tabindex="-1" aria-labelledby="lotSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="lotSelectionModalLabel">
+                    <i class="fas fa-parking me-2"></i>
+                    Select Parking Lot
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4" th:each="gate : ${allGates}">
+                        <button type="button" class="btn btn-outline-primary btn-lg w-100 lot-option"
+                                th:data-lot="${gate}" th:text="${gate}">
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="d-none">
+    <div class="spinner-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i>
+                <span id="successMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-        $(document).ready(function() {
-            // Fetch user info
-            $.get('/api/user', function(data) {
-                $('#username').text(data.username);
-                $('#role').text(data.role);
-            });
-
-            // Set lot
-            $('#lotForm').submit(function(e) {
-                e.preventDefault();
-                const lot = $('#lotSelect').val();
-                if (lot) {
-                    $.ajax({
-                        url: '/api/setLot',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({ lot: lot }),
-                        success: function() {
-                            location.reload();
-                        },
-                        error: function() {
-                            alert('Error setting lot');
-                        }
-                    });
-                }
-            });
-
-            // Add single entry
-            $('#addSingleEntry').click(function() {
-                $.ajax({
-                    url: '/api/addEntry',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ count: 1 }),
-                    success: function() {
-                        location.reload();
-                    },
-                    error: function(xhr) {
-                        $('#entryError').text(xhr.responseText).show();
-                    }
-                });
-            });
-
-            // Add multiple entries
-            $('#addMultipleEntries').click(function() {
-                const count = parseInt($('#entryCount').val());
-                if (count > 0) {
-                    $.ajax({
-                        url: '/api/addEntry',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({ count: count }),
-                        success: function() {
-                            location.reload();
-                        },
-                        error: function(xhr) {
-                            $('#entryError').text(xhr.responseText).show();
-                        }
-                    });
-                } else {
-                    $('#entryError').text('Please enter a valid number of entries.').show();
-                }
-            });
-
-            // Reset entries (admin only)
-            $('#resetEntries').click(function() {
-                if (confirm('Are you sure you want to reset all entries for today? This will delete all entries across all lots and cannot be undone.')) {
-                    $.ajax({
-                        url: '/api/reset',
-                        type: 'POST',
-                        success: function() {
-                            alert('All entries for today have been reset successfully.');
-                            location.reload();
-                        },
-                        error: function() {
-                            alert('Error resetting entries');
-                        }
-                    });
-                }
-            });
-        });
-    </script>
+<script src="/js/app.js"></script>
 </body>
 </html>
