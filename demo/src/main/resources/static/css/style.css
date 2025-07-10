@@ -121,12 +121,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Color coding for entry types */
-.entry-count-card.standard {
+.entry-count-card.registered {
     border-top: 4px solid var(--primary-color);
-}
-
-.entry-count-card.out-of-province {
-    border-top: 4px solid var(--info-color);
 }
 
 .entry-count-card.usa {

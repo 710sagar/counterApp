@@ -2,8 +2,7 @@ package com.tsc.model;
 
 // EntryType Enum
 public enum EntryType {
-    STANDARD("Standard"),
-    OUT_OF_PROVINCE("Out of Province"),
+    REGISTERED("Registered"),
     USA("USA"),
     NON_REGISTERED("Non-registered"),
     FAMILY_AREA("Family Area"),

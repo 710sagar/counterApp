@@ -5,9 +5,10 @@ class ParkingTracker {
         this.currentUser = null;
         this.selectedLot = null;
         this.availableEntryTypes = [];
+        this.csrfToken = $('meta[name="_csrf"]').attr('content');
+        this.csrfHeader = $('meta[name="_csrf_header"]').attr('content');
         this.entryTypeMappings = {
-            'STANDARD': { label: 'Standard', class: 'btn-primary', color: 'standard' },
-            'OUT_OF_PROVINCE': { label: 'Out of Province', class: 'btn-info', color: 'out-of-province' },
+            'REGISTERED': { label: 'Registered', class: 'btn-primary', color: 'registered' },
             'USA': { label: 'USA', class: 'btn-warning', color: 'usa' },
             'NON_REGISTERED': { label: 'Non-registered', class: 'btn-danger', color: 'non-registered' },
             'FAMILY_AREA': { label: 'Family Area', class: 'btn-success', color: 'family-area' },
@@ -22,7 +23,6 @@ class ParkingTracker {
         this.setupEventListeners();
         this.loadUserInfo();
         this.checkLotSelection();
-        this.loadData();
     }
 
     setupEventListeners() {
@@ -59,7 +59,11 @@ class ParkingTracker {
 
     async loadUserInfo() {
         try {
-            const response = await $.get('/api/user');
+            const response = await $.ajax({
+                url: '/api/user',
+                type: 'GET',
+                headers: { [this.csrfHeader]: this.csrfToken }
+            });
             this.currentUser = response;
             $('#username').text(response.username);
             $('#role').text(response.role);
@@ -71,19 +75,21 @@ class ParkingTracker {
                 $('.admin-only').hide();
             }
         } catch (error) {
-            this.showError('Failed to load user information');
+            console.error('Failed to load user info:', error);
+            this.showError('Failed to load user information: ' + (error.responseText || 'Unknown error'));
         }
     }
 
     checkLotSelection() {
-        // Get selected lot from page
         const lotElement = $('.selected-lot-display span');
         if (lotElement.length && lotElement.text().trim() !== 'None' && lotElement.text().trim() !== '') {
             this.selectedLot = lotElement.text().trim();
             this.loadAvailableEntryTypes();
         } else {
-            // Show lot selection modal if no lot is selected
-            setTimeout(() => this.showLotSelectionModal(), 500);
+            const selectBtn = $('#selectLotBtn');
+            if (selectBtn.length > 0) {
+                setTimeout(() => this.showLotSelectionModal(), 500);
+            }
         }
     }
 
@@ -102,19 +108,20 @@ class ParkingTracker {
                 url: '/api/setLot',
                 type: 'POST',
                 contentType: 'application/json',
+                headers: { [this.csrfHeader]: this.csrfToken },
                 data: JSON.stringify({ lot: lot })
             });
 
             this.selectedLot = lot;
             this.showSuccess(`Lot ${lot} selected successfully`);
 
-            // Hide modal and reload page
             const modal = bootstrap.Modal.getInstance(document.getElementById('lotSelectionModal'));
             if (modal) modal.hide();
 
             setTimeout(() => location.reload(), 1000);
 
         } catch (error) {
+            console.error('Failed to set lot:', error);
             this.showError('Failed to set lot: ' + (error.responseText || 'Unknown error'));
         } finally {
             this.showLoading(false);
@@ -125,12 +132,19 @@ class ParkingTracker {
         if (!this.selectedLot) return;
 
         try {
-            const response = await $.get('/api/availableEntryTypes', { lot: this.selectedLot });
+            const response = await $.ajax({
+                url: '/api/availableEntryTypes',
+                type: 'GET',
+                data: { lot: this.selectedLot },
+                headers: { [this.csrfHeader]: this.csrfToken }
+            });
             this.availableEntryTypes = response;
             this.renderEntryButtons();
             this.renderMultipleEntryOptions();
+            this.loadData();
         } catch (error) {
-            this.showError('Failed to load entry types');
+            console.error('Failed to load entry types:', error);
+            this.showError('Failed to load entry types: ' + (error.responseText || 'Unknown error'));
         }
     }
 
@@ -168,7 +182,7 @@ class ParkingTracker {
         this.availableEntryTypes.forEach(entryType => {
             const mapping = this.entryTypeMappings[entryType];
             if (mapping) {
-                const isSelected = entryType === 'STANDARD' ? 'selected' : '';
+                const isSelected = entryType === 'REGISTERED' ? 'selected' : '';
                 select.append(`<option value="${entryType}" ${isSelected}>${mapping.label}</option>`);
             }
         });
@@ -177,7 +191,6 @@ class ParkingTracker {
     async addSingleEntry(entryType) {
         if (!entryType || !this.selectedLot) return;
 
-        // Disable button temporarily
         const button = $(`.entry-type-btn[data-entry-type="${entryType}"]`);
         button.prop('disabled', true);
 
@@ -188,6 +201,7 @@ class ParkingTracker {
                 url: '/api/addEntry',
                 type: 'POST',
                 contentType: 'application/json',
+                headers: { [this.csrfHeader]: this.csrfToken },
                 data: JSON.stringify({
                     entryType: entryType,
                     count: 1
@@ -199,6 +213,7 @@ class ParkingTracker {
             this.loadData();
 
         } catch (error) {
+            console.error('Failed to add single entry:', error);
             this.showError('Failed to add entry: ' + (error.responseText || 'Unknown error'));
         } finally {
             this.showLoading(false);
@@ -229,6 +244,7 @@ class ParkingTracker {
                 url: '/api/addEntry',
                 type: 'POST',
                 contentType: 'application/json',
+                headers: { [this.csrfHeader]: this.csrfToken },
                 data: JSON.stringify({
                     entryType: entryType,
                     count: count
@@ -238,13 +254,13 @@ class ParkingTracker {
             const mapping = this.entryTypeMappings[entryType];
             this.showSuccess(`${count} ${mapping.label} entries added successfully`);
 
-            // Reset form
-            $('#multipleEntryType').val('');
+            $('#multipleEntryType').val('REGISTERED');
             $('#entryCount').val('1');
 
             this.loadData();
 
         } catch (error) {
+            console.error('Failed to add multiple entries:', error);
             this.showError('Failed to add entries: ' + (error.responseText || 'Unknown error'));
         } finally {
             this.showLoading(false);
@@ -259,13 +275,15 @@ class ParkingTracker {
         try {
             await $.ajax({
                 url: '/api/undoLastEntry',
-                type: 'POST'
+                type: 'POST',
+                headers: { [this.csrfHeader]: this.csrfToken }
             });
 
             this.showSuccess('Last entry undone successfully');
             this.loadData();
 
         } catch (error) {
+            console.error('Failed to undo entry:', error);
             this.showError('Failed to undo entry: ' + (error.responseText || 'Unknown error'));
         } finally {
             this.showLoading(false);
@@ -276,7 +294,6 @@ class ParkingTracker {
         const confirmMessage = 'Are you sure you want to reset all entries for today? This will mark all entries across all lots as deleted and cannot be undone.';
         if (!confirm(confirmMessage)) return;
 
-        // Double confirmation for safety
         if (!confirm('This is your final warning. All today\'s entries will be marked as deleted. Continue?')) return;
 
         this.showLoading(true);
@@ -284,13 +301,15 @@ class ParkingTracker {
         try {
             const response = await $.ajax({
                 url: '/api/reset',
-                type: 'POST'
+                type: 'POST',
+                headers: { [this.csrfHeader]: this.csrfToken }
             });
 
             this.showSuccess(response);
             this.loadData();
 
         } catch (error) {
+            console.error('Failed to reset entries:', error);
             this.showError('Failed to reset entries: ' + (error.responseText || 'Unknown error'));
         } finally {
             this.showLoading(false);
@@ -298,25 +317,24 @@ class ParkingTracker {
     }
 
     async loadData() {
-        try {
-            if (this.currentUser && this.currentUser.isAdmin) {
-                await this.loadAdminData();
-            }
-
-            if (this.selectedLot) {
-                await this.loadUserData();
-            }
-        } catch (error) {
-            this.showError('Failed to load data');
+        if (this.currentUser && this.currentUser.isAdmin) {
+            await this.loadAdminData();
+        } else if (this.selectedLot) {
+            await this.loadUserData();
         }
     }
 
     async loadAdminData() {
         try {
-            const response = await $.get('/api/entries/all');
+            const response = await $.ajax({
+                url: '/api/entries/all',
+                type: 'GET',
+                headers: { [this.csrfHeader]: this.csrfToken }
+            });
             this.renderAdminTable(response);
         } catch (error) {
-            this.showError('Failed to load admin data');
+            console.error('Failed to load admin data:', error);
+            this.showError('Failed to load admin data: ' + (error.responseText || 'Unknown error'));
         }
     }
 
@@ -324,10 +342,16 @@ class ParkingTracker {
         if (!this.selectedLot) return;
 
         try {
-            const response = await $.get('/api/entries', { lot: this.selectedLot });
+            const response = await $.ajax({
+                url: '/api/entries',
+                type: 'GET',
+                data: { lot: this.selectedLot },
+                headers: { [this.csrfHeader]: this.csrfToken }
+            });
             this.renderUserCounts(response);
         } catch (error) {
-            this.showError('Failed to load entry data');
+            console.error('Failed to load user data:', error);
+            this.showError('Failed to load entry data: ' + (error.responseText || 'Unknown error'));
         }
     }
 
@@ -345,8 +369,7 @@ class ParkingTracker {
 
             let row = `<tr><td class="fw-bold">${gate}</td>`;
 
-            // Add counts for each entry type
-            ['STANDARD', 'OUT_OF_PROVINCE', 'USA', 'NON_REGISTERED', 'FAMILY_AREA', 'SNP', 'NORMAL_LOT'].forEach(type => {
+            ['REGISTERED', 'USA', 'NON_REGISTERED', 'FAMILY_AREA', 'SNP', 'NORMAL_LOT'].forEach(type => {
                 const count = gateCounts[type] || 0;
                 gateTotal += count;
                 row += `<td class="text-center">${count}</td>`;
@@ -357,11 +380,10 @@ class ParkingTracker {
             tbody.append(row);
         });
 
-        // Add grand total row
         const totalRow = `
             <tr class="table-dark">
                 <td class="fw-bold">TOTAL</td>
-                <td colspan="7" class="text-center">All Entries</td>
+                <td colspan="6" class="text-center">All Entries</td>
                 <td class="fw-bold text-center">${grandTotal}</td>
             </tr>
         `;
@@ -394,7 +416,6 @@ class ParkingTracker {
             container.append(cardHtml);
         });
 
-        // Add total count card
         const totalCardHtml = `
             <div class="col-md-6 col-lg-4">
                 <div class="entry-count-card total-count fade-in">
@@ -427,7 +448,6 @@ class ParkingTracker {
     }
 }
 
-// Initialize the application when DOM is ready
 $(document).ready(function() {
     window.parkingTracker = new ParkingTracker();
 
@@ -438,7 +458,7 @@ $(document).ready(function() {
         }
     }, 30000);
 
-    // Add keyboard shortcuts
+    // Keyboard shortcuts
     $(document).on('keypress', function(e) {
         if (e.ctrlKey || e.metaKey) {
             switch(e.which) {
