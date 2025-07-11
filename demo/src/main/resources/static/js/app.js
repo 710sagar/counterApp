@@ -40,6 +40,7 @@ class ParkingTracker {
     setupEventListeners() {
         // Lot selection
         $('#changeLotBtn, #selectLotBtn').on('click', () => this.showLotSelectionModal());
+        $('#trackExitBtn').on('click', () => window.location='/exitIndex');
         $(document).on('click', '.lot-option', (e) => this.selectLot($(e.target).data('lot')));
 
         // Entry actions
@@ -54,7 +55,7 @@ class ParkingTracker {
         // Form validation
         $('#entryCount').on('input', function() {
             const value = parseInt($(this).val());
-            if (value < 1 || value > 50) {
+            if (value < 1) {
                 $(this).addClass('is-invalid');
             } else {
                 $(this).removeClass('is-invalid');
