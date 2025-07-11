@@ -8,13 +8,25 @@ class ParkingTracker {
         this.csrfToken = $('meta[name="_csrf"]').attr('content');
         this.csrfHeader = $('meta[name="_csrf_header"]').attr('content');
         this.entryTypeMappings = {
-            'REGISTERED': { label: 'Registered', class: 'btn-primary', color: 'registered' },
+            'REGISTERED': {
+                        label: 'Registered',
+                        class: (lot) => ['Lot A', 'Lot B', 'Lot C', 'Lot D'].includes(lot) ? 'btn-light' : lot === 'SNP' ? 'btn-primary' : lot === 'Family Area' ? 'btn-pink' : 'btn-primary',
+                        color: 'registered'
+                    },
             'USA': { label: 'USA', class: 'btn-warning', color: 'usa' },
-            'NON_REGISTERED': { label: 'Non-registered', class: 'btn-danger', color: 'non-registered' },
-            'FAMILY_AREA': { label: 'Family Area', class: 'btn-success', color: 'family-area' },
-            'SNP': { label: 'SNP', class: 'btn-secondary', color: 'snp' },
-            'NORMAL_LOT': { label: 'Normal Lot', class: 'btn-dark', color: 'normal-lot' }
+            'NON_REGISTERED': { label: 'Unregistered', class: 'btn-danger', color: 'non-registered' },
+            'FAMILY_AREA': { label: 'Family Area', class: 'btn-pink', color: 'family-area' },
+            'SNP': { label: 'SNP', class: 'btn-primary', color: 'snp' },
+            'NORMAL_LOT': {
+                        label: 'Lot A/B/C/D',
+                        class: (lot) => ['SNP', 'Family Area', 'Uber/Taxi'].includes(lot) ? 'btn-light' : 'btn-primary',
+                        color: 'normal-lot'
+                    }
         };
+
+        // Define which entry types belong to which section
+        this.regularEntryTypes = ['REGISTERED', 'NON_REGISTERED'];
+        this.misparkedEntryTypes = ['USA', 'FAMILY_AREA', 'SNP', 'NORMAL_LOT'];
 
         this.init();
     }
@@ -149,27 +161,53 @@ class ParkingTracker {
     }
 
     renderEntryButtons() {
-        const container = $('#entryButtonsContainer');
-        if (!container.length || !this.availableEntryTypes.length) return;
+        // Clear all containers
+        const regularContainer = $('#regularEntryButtonsContainer');
+        const misparkedContainer = $('#misparkedEntryButtonsContainer');
 
-        container.empty();
+        if (!this.availableEntryTypes.length) return;
 
+        regularContainer.empty();
+        misparkedContainer.empty();
+
+        // Render regular entry buttons
         this.availableEntryTypes.forEach(entryType => {
             const mapping = this.entryTypeMappings[entryType];
             if (!mapping) return;
 
+            // Call the class function with the current selected lot
+            const buttonClass = typeof mapping.class === 'function' ? mapping.class(this.selectedLot) : mapping.class;
             const buttonHtml = `
                 <div class="col-md-6 col-lg-4">
                     <button type="button"
-                            class="btn ${mapping.class} btn-lg w-100 entry-type-btn"
+                            class="btn ${buttonClass} btn-lg w-100 entry-type-btn"
                             data-entry-type="${entryType}">
                         <i class="fas fa-plus-circle me-2"></i>
                         Add ${mapping.label}
                     </button>
                 </div>
             `;
-            container.append(buttonHtml);
+
+            // Determine which container to add the button to
+            if (this.regularEntryTypes.includes(entryType)) {
+                regularContainer.append(buttonHtml);
+            } else if (this.misparkedEntryTypes.includes(entryType)) {
+                misparkedContainer.append(buttonHtml);
+            }
         });
+
+        // Hide sections if they have no buttons
+        if (regularContainer.children().length === 0) {
+            regularContainer.closest('.card').parent().hide();
+        } else {
+            regularContainer.closest('.card').parent().show();
+        }
+
+        if (misparkedContainer.children().length === 0) {
+            misparkedContainer.closest('.card').parent().hide();
+        } else {
+            misparkedContainer.closest('.card').parent().show();
+        }
     }
 
     renderMultipleEntryOptions() {
@@ -179,13 +217,31 @@ class ParkingTracker {
         select.empty();
         select.append('<option value="">Select Entry Type</option>');
 
+        // Add optgroups for better organization
+        const regularOptgroup = $('<optgroup label="Regular Entries"></optgroup>');
+        const misparkedOptgroup = $('<optgroup label="Mis-parked Entries"></optgroup>');
+
         this.availableEntryTypes.forEach(entryType => {
             const mapping = this.entryTypeMappings[entryType];
             if (mapping) {
                 const isSelected = entryType === 'REGISTERED' ? 'selected' : '';
-                select.append(`<option value="${entryType}" ${isSelected}>${mapping.label}</option>`);
+                const option = `<option value="${entryType}" ${isSelected}>${mapping.label}</option>`;
+
+                if (this.regularEntryTypes.includes(entryType)) {
+                    regularOptgroup.append(option);
+                } else if (this.misparkedEntryTypes.includes(entryType)) {
+                    misparkedOptgroup.append(option);
+                }
             }
         });
+
+        // Only append optgroups if they have options
+        if (regularOptgroup.children().length > 0) {
+            select.append(regularOptgroup);
+        }
+        if (misparkedOptgroup.children().length > 0) {
+            select.append(misparkedOptgroup);
+        }
     }
 
     async addSingleEntry(entryType) {
@@ -232,7 +288,7 @@ class ParkingTracker {
         }
 
         if (!count || count < 1) {
-            this.showError('Please enter a valid count (1-50)');
+            this.showError('Please enter a valid count (1 or more)');
             $('#entryCount').focus();
             return;
         }
@@ -408,8 +464,8 @@ class ParkingTracker {
             const cardHtml = `
                 <div class="col-md-6 col-lg-4">
                     <div class="entry-count-card ${mapping.color} fade-in">
+                        <span class="count-label">${mapping.label}: </span>
                         <span class="count-number">${count}</span>
-                        <span class="count-label">${mapping.label}</span>
                     </div>
                 </div>
             `;
@@ -419,8 +475,8 @@ class ParkingTracker {
         const totalCardHtml = `
             <div class="col-md-6 col-lg-4">
                 <div class="entry-count-card total-count fade-in">
+                    <span class="count-label">Total Entries: </span>
                     <span class="count-number">${totalCount}</span>
-                    <span class="count-label">Total Entries</span>
                 </div>
             </div>
         `;
