@@ -25,21 +25,18 @@ jobs:
           distribution: 'microsoft'
 
       - name: Build with Maven
-        working-directory: demo
         run: mvn clean install
 
-      - name: List target directory
-        run: ls -al /home/runner/work/TrafficData/TrafficData/demo/target/
-        
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: '${{ github.workspace }}/demo/target/*.war'
+          path: '${{ github.workspace }}/target/*.war'
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build 
+    needs: build
+    
     permissions:
       id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
@@ -53,9 +50,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_B4BDE7A2C9C948BF9A6CFABE70CE7A77 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3B1A5D259C3F442D92B09E26468F530B }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3A80DA5FBD02439D89101A17409C41A8 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0E9A0404EBE848F587A237A1846A85C2 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BFC7E28C634D45059BA504E6FCF2077A }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A981E8E0D1C14F1E8438B78035D8E728 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
