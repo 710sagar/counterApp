@@ -35,7 +35,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: '/home/runner/work/TrafficData/TrafficData/demo/target/*.war'
 
   deploy:
     runs-on: ubuntu-latest
