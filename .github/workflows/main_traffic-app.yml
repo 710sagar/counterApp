@@ -25,13 +25,17 @@ jobs:
           distribution: 'microsoft'
 
       - name: Build with Maven
+        working-directory: demo
         run: mvn clean install
+
+      - name: List target directory
+        run: ls -al /home/runner/work/TrafficData/TrafficData/demo/target/        
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: '${{ github.workspace }}/target/*.war'
+          path: '${{ github.workspace }}/demo/target/*.war'
 
   deploy:
     runs-on: ubuntu-latest
