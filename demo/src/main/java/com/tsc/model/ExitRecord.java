@@ -6,14 +6,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+
 @Entity
+@Table(indexes = {
+		@Index(name = "idx_exit_lot", columnList = "lot"),
+		@Index(name = "idx_exit_timestamp", columnList = "timestamp"),
+		@Index(name = "idx_exit_lot_timestamp", columnList = "lot,timestamp")
+})
 public class ExitRecord {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-    private String lot;
-    private LocalDateTime timestamp;
-    
+	private String lot;
+	private LocalDateTime timestamp;
+
 	public ExitRecord() {
 		super();
 		// TODO Auto-generated constructor stub
@@ -23,7 +31,7 @@ public class ExitRecord {
 	public ExitRecord(String lot) {
 		super();
 		this.lot = lot;
-		 this.timestamp = LocalDateTime.now();
+		this.timestamp = LocalDateTime.now();
 	}
 
 
