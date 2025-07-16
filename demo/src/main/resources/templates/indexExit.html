@@ -164,6 +164,21 @@
             color: #6c757d;
         }
 
+        /* Quick exit buttons */
+        .quick-exit-btn {
+            font-size: 1.5rem;
+            padding: 1rem 2rem;
+            margin: 0.5rem;
+            min-width: 100px;
+        }
+
+        .quick-exit-section {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
         @media (max-width: 768px) {
             .side-menu {
                 width: 280px;
@@ -172,6 +187,12 @@
 
             .lot-selection-card {
                 margin: 1rem;
+            }
+
+            .quick-exit-btn {
+                font-size: 1.2rem;
+                padding: 0.75rem 1.5rem;
+                min-width: 80px;
             }
         }
     </style>
@@ -289,7 +310,7 @@
                     <div class="row g-3">
                         <div class="col-md-6 col-lg-4">
                             <div class="entry-count-card total-count fade-in">
-                                <span class="count-number" th:text="${selectedLotCount ?: 0}"></span>
+                                <span class="count-number" id="selectedLotCount" th:text="${selectedLotCount ?: 0}"></span>
                                 <span class="count-label">Total Exits</span>
                             </div>
                         </div>
@@ -321,31 +342,31 @@
                             <tbody id="adminExitTableBody">
                             <tr>
                                 <td class="fw-bold">Lot A</td>
-                                <td class="text-center" th:text="${allLotCounts['A'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="A" th:text="${allLotCounts['A'] ?: 0}"></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Lot B</td>
-                                <td class="text-center" th:text="${allLotCounts['B'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="B" th:text="${allLotCounts['B'] ?: 0}"></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Lot C</td>
-                                <td class="text-center" th:text="${allLotCounts['C'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="C" th:text="${allLotCounts['C'] ?: 0}"></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Lot D</td>
-                                <td class="text-center" th:text="${allLotCounts['D'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="D" th:text="${allLotCounts['D'] ?: 0}"></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">SNP</td>
-                                <td class="text-center" th:text="${allLotCounts['SNP'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="SNP" th:text="${allLotCounts['SNP'] ?: 0}"></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Family Area</td>
-                                <td class="text-center" th:text="${allLotCounts['Family'] ?: 0}"></td>
+                                <td class="text-center exit-count" data-lot="Family" th:text="${allLotCounts['Family'] ?: 0}"></td>
                             </tr>
                             <tr class="table-dark">
                                 <td class="fw-bold">TOTAL</td>
-                                <td class="fw-bold text-center" th:text="${(allLotCounts['A'] ?: 0) + (allLotCounts['B'] ?: 0) + (allLotCounts['C'] ?: 0) + (allLotCounts['D'] ?: 0) + (allLotCounts['SNP'] ?: 0) + (allLotCounts['Family'] ?: 0)}"></td>
+                                <td class="fw-bold text-center" id="totalExitCount" th:text="${(allLotCounts['A'] ?: 0) + (allLotCounts['B'] ?: 0) + (allLotCounts['C'] ?: 0) + (allLotCounts['D'] ?: 0) + (allLotCounts['SNP'] ?: 0) + (allLotCounts['Family'] ?: 0)}"></td>
                             </tr>
                             </tbody>
                         </table>
@@ -355,7 +376,7 @@
         </div>
     </div>
 
-    <!-- Exit Logging Section (when lot is selected) -->
+    <!-- Quick Exit Buttons Section (when lot is selected) -->
     <div class="row mt-4" th:if="${selectedLot != null}">
         <div class="col-12">
             <div class="card shadow-sm">
@@ -366,8 +387,32 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <!-- Log Exit Form -->
-                    <form th:action="@{/exit}" method="post">
+                    <div class="quick-exit-section text-center">
+                        <h5 class="mb-3">Quick Exit Buttons</h5>
+                        <div class="d-flex justify-content-center flex-wrap">
+                            <button class="btn btn-primary quick-exit-btn" onclick="logExitQuick(1)">
+                                <i class="fas fa-car me-1"></i> 1
+                            </button>
+                            <button class="btn btn-primary quick-exit-btn" onclick="logExitQuick(2)">
+                                <i class="fas fa-car me-1"></i> 2
+                            </button>
+                            <button class="btn btn-primary quick-exit-btn" onclick="logExitQuick(3)">
+                                <i class="fas fa-car me-1"></i> 3
+                            </button>
+                            <button class="btn btn-primary quick-exit-btn" onclick="logExitQuick(5)">
+                                <i class="fas fa-car me-1"></i> 5
+                            </button>
+                            <button class="btn btn-primary quick-exit-btn" onclick="logExitQuick(10)">
+                                <i class="fas fa-car me-1"></i> 10
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Custom Exit Form -->
+                    <h5 class="mb-3">Multiple Entries Count</h5>
+                    <form id="exitForm" onsubmit="return false;">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
                         <div class="row g-3 align-items-end">
@@ -376,11 +421,11 @@
                                     <i class="fas fa-car me-1"></i>
                                     Number of Cars Exiting:
                                 </label>
-                                <input type="number" id="count" name="count" value="1" min="1" max="50"
+                                <input type="number" id="count" name="count" value="1" min="1"
                                        class="form-control form-control-lg" required />
                             </div>
                             <div class="col-md-6">
-                                <button class="btn btn-success btn-lg w-100" type="submit">
+                                <button class="btn btn-success btn-lg w-100" type="button" onclick="logExit()">
                                     <i class="fas fa-plus-circle me-2"></i>
                                     Log Exit
                                 </button>
@@ -496,6 +541,10 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// Global variables
+let isProcessing = false;
+let pendingRequests = [];
+
 // Side Menu functionality
 $(document).ready(function() {
     const sideMenu = $('#sideMenu');
@@ -531,106 +580,15 @@ $(document).ready(function() {
     const csrfToken = $('meta[name="_csrf"]').attr('content');
     const csrfHeader = $('meta[name="_csrf_header"]').attr('content');
 
-    // Lot selection functionality (same as entry module)
+    // Lot selection functionality
     $('#changeLotBtn, #selectLotBtn').on('click', () => showLotSelectionModal());
     $(document).on('click', '.lot-option', (e) => selectLot($(e.target).data('lot')));
     $('#refreshData').on('click', () => refreshExitData());
 
-    // Handle exit form submission via AJAX
-    $('form[action="/exit"]').on('submit', function(e) {
-        e.preventDefault();
-        logExit();
-    });
-
-    function showLotSelectionModal() {
-        const modal = new bootstrap.Modal(document.getElementById('lotSelectionModal'));
-        modal.show();
-    }
-
-    async function selectLot(lot) {
-        if (!lot) return;
-
-        showLoading(true);
-
-        try {
-            await $.ajax({
-                url: '/api/setLot',
-                type: 'POST',
-                contentType: 'application/json',
-                headers: { [csrfHeader]: csrfToken },
-                data: JSON.stringify({ lot: lot })
-            });
-
-            showSuccess(`Lot ${lot} selected successfully`);
-
-            const modal = bootstrap.Modal.getInstance(document.getElementById('lotSelectionModal'));
-            if (modal) modal.hide();
-
-            setTimeout(() => location.reload(), 1000);
-
-        } catch (error) {
-            console.error('Failed to set lot:', error);
-            showError('Failed to set lot: ' + (error.responseText || 'Unknown error'));
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    async function logExit() {
-        const count = parseInt($('#count').val());
-
-        if (!count || count < 1) {
-            showError('Please enter a valid count (1 or more)');
-            $('#count').focus();
-            return;
-        }
-
-        const button = $('button[type="submit"]');
-        button.prop('disabled', true);
-        showLoading(true);
-
-        try {
-            await $.ajax({
-                url: '/api/logExit',
-                type: 'POST',
-                headers: { [csrfHeader]: csrfToken },
-                data: {
-                    count: count
-                }
-            });
-
-            showSuccess(`${count} exit${count > 1 ? 's' : ''} logged successfully`);
-
-            // Reset form
-            $('#count').val('1');
-
-            // Refresh the page to update counts
-            setTimeout(() => location.reload(), 1000);
-
-        } catch (error) {
-            console.error('Failed to log exit:', error);
-            showError('Failed to log exit: ' + (error.responseText || 'Unknown error'));
-        } finally {
-            showLoading(false);
-            button.prop('disabled', false);
-        }
-    }
-
-    function refreshExitData() {
-        showLoading(true);
-        showSuccess('Refreshing exit data...');
-        setTimeout(() => {
-            location.reload();
-        }, 1000);
-    }
-
-    // Make selectLot function globally accessible
-    window.selectLot = selectLot;
-
     // Form validation
     $('#count').on('input', function() {
         const value = parseInt($(this).val());
-        if (value < 1 || value > 50) {
+        if (value < 1) {
             $(this).addClass('is-invalid');
         } else {
             $(this).removeClass('is-invalid');
@@ -641,7 +599,174 @@ $(document).ready(function() {
     if ($('#count').length) {
         $('#count').focus();
     }
+
+    // Auto refresh every 10 seconds
+    setInterval(refreshExitData, 10000);
+
+    // Make functions globally accessible
+    window.csrfToken = csrfToken;
+    window.csrfHeader = csrfHeader;
 });
+
+function showLotSelectionModal() {
+    const modal = new bootstrap.Modal(document.getElementById('lotSelectionModal'));
+    modal.show();
+}
+
+async function selectLot(lot) {
+    if (!lot) return;
+
+    showLoading(true);
+
+    try {
+        await $.ajax({
+            url: '/api/setLot',
+            type: 'POST',
+            contentType: 'application/json',
+            headers: { [window.csrfHeader]: window.csrfToken },
+            data: JSON.stringify({ lot: lot })
+        });
+
+        showSuccess(`Lot ${lot} selected successfully`);
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('lotSelectionModal'));
+        if (modal) modal.hide();
+
+        setTimeout(() => location.reload(), 1000);
+
+    } catch (error) {
+        console.error('Failed to set lot:', error);
+        showError('Failed to set lot: ' + (error.responseText || 'Unknown error'));
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Quick exit button handler
+async function logExitQuick(count) {
+    if (isProcessing) {
+        // Queue the request
+        pendingRequests.push(count);
+        showSuccess(`Queued ${count} exit${count > 1 ? 's' : ''}`);
+        return;
+    }
+
+    await performLogExit(count);
+
+    // Process any pending requests
+    processPendingRequests();
+}
+
+// Main exit logging function
+async function logExit() {
+    const count = parseInt($('#count').val());
+
+    if (!count || count < 1) {
+        showError('Please enter a valid count (1 or more)');
+        $('#count').focus();
+        return;
+    }
+
+    if (isProcessing) {
+        // Queue the request
+        pendingRequests.push(count);
+        showSuccess(`Queued ${count} exit${count > 1 ? 's' : ''}`);
+        return;
+    }
+
+    await performLogExit(count);
+
+    // Reset form
+    $('#count').val('1');
+
+    // Process any pending requests
+    processPendingRequests();
+}
+
+// Actual exit logging implementation
+async function performLogExit(count) {
+    isProcessing = true;
+
+    // Disable all buttons
+    $('.quick-exit-btn, button[type="button"]').prop('disabled', true);
+
+    try {
+        const response = await $.ajax({
+            url: '/api/logExit',
+            type: 'POST',
+            headers: { [window.csrfHeader]: window.csrfToken },
+            data: {
+                count: count
+            }
+        });
+
+        if (response.success) {
+            showSuccess(`${count} exit${count > 1 ? 's' : ''} logged successfully`);
+
+            // Update the UI immediately with the new count
+            updateExitCount(response.totalCount);
+        } else {
+            showError(response.error || 'Failed to log exit');
+        }
+
+    } catch (error) {
+        console.error('Failed to log exit:', error);
+        showError('Failed to log exit: ' + (error.responseText || 'Unknown error'));
+    } finally {
+        isProcessing = false;
+        // Re-enable all buttons
+        $('.quick-exit-btn, button[type="button"]').prop('disabled', false);
+    }
+}
+
+// Process pending requests
+async function processPendingRequests() {
+    if (pendingRequests.length > 0 && !isProcessing) {
+        const totalPending = pendingRequests.reduce((sum, count) => sum + count, 0);
+        pendingRequests = [];
+
+        showSuccess(`Processing ${totalPending} pending exits...`);
+        await performLogExit(totalPending);
+    }
+}
+
+// Update exit count in UI
+function updateExitCount(newCount) {
+    // Update selected lot count for regular users
+    $('#selectedLotCount').text(newCount);
+
+    // For admins, we need to refresh all counts
+    if ($('#adminExitTableBody').length) {
+        refreshExitData();
+    }
+}
+
+// Refresh exit data
+async function refreshExitData() {
+    try {
+        const response = await $.ajax({
+            url: '/api/exitCounts',
+            type: 'GET',
+            headers: { [window.csrfHeader]: window.csrfToken }
+        });
+
+        if (response.isAdmin && response.allLotCounts) {
+            // Update admin table
+            let total = 0;
+            for (const [lot, count] of Object.entries(response.allLotCounts)) {
+                $(`.exit-count[data-lot="${lot}"]`).text(count);
+                total += count;
+            }
+            $('#totalExitCount').text(total);
+        } else if (response.selectedLotCount !== undefined) {
+            // Update regular user count
+            $('#selectedLotCount').text(response.selectedLotCount);
+        }
+
+    } catch (error) {
+        console.error('Failed to refresh exit data:', error);
+    }
+}
 
 // Toast functions
 function showSuccess(message) {
@@ -663,6 +788,9 @@ function showLoading(show) {
         $('#loadingSpinner').addClass('d-none');
     }
 }
+
+// Make selectLot function globally accessible
+window.selectLot = selectLot;
 </script>
 </body>
 </html>
