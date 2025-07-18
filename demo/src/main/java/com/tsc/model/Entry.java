@@ -1,6 +1,8 @@
 package com.tsc.model;
 
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import jakarta.persistence.*;
 
 @Entity
@@ -25,6 +27,9 @@ public class Entry {
 
 	private LocalDateTime deletedAt; // When it was deleted
 
+	// Toronto timezone
+	private static final ZoneId TORONTO_ZONE = ZoneId.of("America/Toronto");
+
 	// Constructors
 	public Entry() {
 		super();
@@ -34,8 +39,44 @@ public class Entry {
 		super();
 		this.gate = gate;
 		this.entryType = entryType;
-		this.timestamp = timestamp;
+		// Convert the timestamp to Toronto timezone
+		this.timestamp = convertToTorontoTime(timestamp);
 		this.createdBy = createdBy;
+	}
+
+	// PrePersist hook to ensure timestamp is always in Toronto timezone
+	@PrePersist
+	public void prePersist() {
+		if (this.timestamp == null) {
+			this.timestamp = getCurrentTorontoTime();
+		}
+	}
+
+	// PreUpdate hook for soft deletes
+	@PreUpdate
+	public void preUpdate() {
+		if (this.isDeleted && this.deletedAt == null) {
+			this.deletedAt = getCurrentTorontoTime();
+		}
+	}
+
+	// Helper method to get current Toronto time
+	private static LocalDateTime getCurrentTorontoTime() {
+		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
+	}
+
+	// Helper method to convert any LocalDateTime to Toronto timezone
+	private static LocalDateTime convertToTorontoTime(LocalDateTime dateTime) {
+		// If the input is already assumed to be in Toronto time, return as is
+		// Otherwise, convert from system default to Toronto
+		if (dateTime == null) {
+			return getCurrentTorontoTime();
+		}
+		// Assume the input LocalDateTime is in system default timezone
+		ZonedDateTime systemZoned = dateTime.atZone(ZoneId.systemDefault());
+		// Convert to Toronto timezone
+		ZonedDateTime torontoZoned = systemZoned.withZoneSameInstant(TORONTO_ZONE);
+		return torontoZoned.toLocalDateTime();
 	}
 
 	// Getters and Setters
@@ -85,6 +126,9 @@ public class Entry {
 
 	public void setDeleted(boolean deleted) {
 		isDeleted = deleted;
+		if (deleted && this.deletedAt == null) {
+			this.deletedAt = getCurrentTorontoTime();
+		}
 	}
 
 	public String getDeletedBy() {

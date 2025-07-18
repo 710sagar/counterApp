@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 import jakarta.servlet.http.Cookie;
@@ -27,6 +29,9 @@ public class ExitController {
 	private static final Logger logger = LoggerFactory.getLogger(ExitController.class);
 	private final ExitRecordInterface repository;
 	private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
+
+	// Toronto timezone
+	private static final ZoneId TORONTO_ZONE = ZoneId.of("America/Toronto");
 
 	public ExitController(ExitRecordInterface repository) {
 		this.repository = repository;
@@ -54,8 +59,8 @@ public class ExitController {
 		model.addAttribute("allGates", ALL_GATES);
 
 		// Get exit counts using optimized queries
-		LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
-		LocalDateTime endOfDay = startOfDay.plusDays(1);
+		LocalDateTime startOfDay = getTorontoStartOfDay();
+		LocalDateTime endOfDay = getTorontoEndOfDay();
 
 		if (isAdmin) {
 			// Admin sees all lot counts using optimized query
@@ -146,8 +151,8 @@ public class ExitController {
 		model.addAttribute("selectedLot", selectedLot);
 
 		// Get updated counts using optimized query
-		LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
-		LocalDateTime endOfDay = startOfDay.plusDays(1);
+		LocalDateTime startOfDay = getTorontoStartOfDay();
+		LocalDateTime endOfDay = getTorontoEndOfDay();
 
 		Map<String, Long> lotCounts = new HashMap<>();
 		// Initialize with zeros
@@ -207,8 +212,8 @@ public class ExitController {
 			repository.saveAll(exitRecords);
 
 			// Get updated count for this lot
-			LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
-			LocalDateTime endOfDay = startOfDay.plusDays(1);
+			LocalDateTime startOfDay = getTorontoStartOfDay();
+			LocalDateTime endOfDay = getTorontoEndOfDay();
 			Long updatedCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
 
 			Map<String, Object> response = new HashMap<>();
@@ -229,8 +234,8 @@ public class ExitController {
 	@ResponseBody
 	public ResponseEntity<Map<String, Object>> getExitCounts(HttpServletRequest request) {
 		try {
-			LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
-			LocalDateTime endOfDay = startOfDay.plusDays(1);
+			LocalDateTime startOfDay = getTorontoStartOfDay();
+			LocalDateTime endOfDay = getTorontoEndOfDay();
 
 			UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 			boolean isAdmin = userDetails.getAuthorities().stream()
@@ -295,8 +300,8 @@ public class ExitController {
 		model.addAttribute("selectedLot", selectedLot);
 
 		// Get only today's records using optimized query
-		LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIDNIGHT);
-		LocalDateTime endOfDay = startOfDay.plusDays(1);
+		LocalDateTime startOfDay = getTorontoStartOfDay();
+		LocalDateTime endOfDay = getTorontoEndOfDay();
 		model.addAttribute("records", repository.findExitsForDay(startOfDay, endOfDay));
 
 		return "success";
@@ -334,5 +339,18 @@ public class ExitController {
 			case "Uber/Taxi": return "Uber/Taxi";
 			default: return lotName;
 		}
+	}
+
+	// Helper methods for Toronto timezone
+	private LocalDateTime getCurrentTorontoTime() {
+		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
+	}
+
+	private LocalDateTime getTorontoStartOfDay() {
+		return LocalDate.now(TORONTO_ZONE).atStartOfDay();
+	}
+
+	private LocalDateTime getTorontoEndOfDay() {
+		return LocalDate.now(TORONTO_ZONE).plusDays(1).atStartOfDay();
 	}
 }
