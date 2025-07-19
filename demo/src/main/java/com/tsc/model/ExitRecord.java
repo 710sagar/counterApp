@@ -1,8 +1,6 @@
 package com.tsc.model;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,50 +23,46 @@ public class ExitRecord {
 	private String lot;
 	private LocalDateTime timestamp;
 
-	// Toronto timezone
-	private static final ZoneId TORONTO_ZONE = ZoneId.of("America/Toronto");
-
 	public ExitRecord() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
-
 
 	public ExitRecord(String lot) {
 		super();
 		this.lot = lot;
-		// Always use Toronto time regardless of server timezone
-		this.timestamp = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
+		// LocalDateTime.now() will use the system timezone (Toronto after our config)
+		this.timestamp = LocalDateTime.now();
 	}
 
-	// PrePersist hook to ensure timestamp is always in Toronto timezone
+	// PrePersist hook to ensure timestamp is set
 	@PrePersist
 	public void prePersist() {
 		if (this.timestamp == null) {
-			// Always use Toronto time regardless of server timezone
-			this.timestamp = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
+			this.timestamp = LocalDateTime.now();
 		}
 	}
 
 	public Long getId() {
 		return id;
 	}
+	
 	public void setId(Long id) {
 		this.id = id;
 	}
+	
 	public String getLot() {
 		return lot;
 	}
+	
 	public void setLot(String lot) {
 		this.lot = lot;
 	}
+	
 	public LocalDateTime getTimestamp() {
 		return timestamp;
 	}
+	
 	public void setTimestamp(LocalDateTime timestamp) {
 		this.timestamp = timestamp;
 	}
-    
-    
-
 }
