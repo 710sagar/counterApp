@@ -32,27 +32,23 @@ public class ExitRecord {
 		super();
 		// TODO Auto-generated constructor stub
 	}
-	
+
 
 	public ExitRecord(String lot) {
 		super();
 		this.lot = lot;
-		this.timestamp = getCurrentTorontoTime();
+		// Always use Toronto time regardless of server timezone
+		this.timestamp = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
 	}
 
 	// PrePersist hook to ensure timestamp is always in Toronto timezone
 	@PrePersist
 	public void prePersist() {
 		if (this.timestamp == null) {
-			this.timestamp = getCurrentTorontoTime();
+			// Always use Toronto time regardless of server timezone
+			this.timestamp = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
 		}
 	}
-
-	// Helper method to get current Toronto time
-	private static LocalDateTime getCurrentTorontoTime() {
-		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
-	}
-
 
 	public Long getId() {
 		return id;

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import com.tsc.model.Entry;
 import com.tsc.model.EntryType;
 import com.tsc.repository.EntryRepository;
+import com.tsc.util.TimezoneHelper;
 
 @Controller
 public class EntryController {
@@ -35,18 +36,20 @@ public class EntryController {
 	@Autowired
 	private EntryRepository entryRepository;
 
-	private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
+	@Autowired
+	private TimezoneHelper timezoneHelper;
 
-	// Toronto timezone
-	private static final ZoneId TORONTO_ZONE = ZoneId.of("America/Toronto");
+	private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
 
 	@GetMapping("/")
 	public String index(Model model, HttpServletRequest request) {
 		logger.info("Accessing index page");
 
 		// Get Toronto start and end of day
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+
+		logger.info("Using Toronto time - Start: {}, End: {}", startOfDay, endOfDay);
 
 		// Initialize countMap with all gates and entry types
 		Map<String, Map<EntryType, Long>> countMap = new HashMap<>();
@@ -175,8 +178,9 @@ public class EntryController {
 		logger.info("Adding {} entries for lot {}, type {}, by user {}", count, lot, entryType, username);
 
 		try {
-			// Get current Toronto time
-			LocalDateTime torontoTime = getCurrentTorontoTime();
+			// Get current Toronto time from helper
+			LocalDateTime torontoTime = timezoneHelper.getCurrentTorontoTime();
+			logger.info("Creating entries with Toronto timestamp: {}", torontoTime);
 
 			for (int i = 0; i < count; i++) {
 				Entry entry = new Entry(lot, entryType, torontoTime, username);
@@ -198,8 +202,8 @@ public class EntryController {
 			return ResponseEntity.badRequest().body(null);
 		}
 
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 		Map<String, Object> response = new HashMap<>();
 		response.put("lot", lot);
@@ -229,8 +233,8 @@ public class EntryController {
 			return ResponseEntity.status(403).body(null);
 		}
 
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 		List<Object[]> counts = entryRepository.countByGateAndTypeForDay(startOfDay, endOfDay);
 
@@ -272,11 +276,11 @@ public class EntryController {
 			return ResponseEntity.status(403).body("Unauthorized");
 		}
 
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 		try {
-			int deletedCount = entryRepository.softDeleteEntriesForDay(startOfDay, endOfDay, userDetails.getUsername(), getCurrentTorontoTime());
+			int deletedCount = entryRepository.softDeleteEntriesForDay(startOfDay, endOfDay, userDetails.getUsername(), timezoneHelper.getCurrentTorontoTime());
 			logger.info("Reset {} entries for today by {}", deletedCount, userDetails.getUsername());
 			return ResponseEntity.ok("Successfully reset " + deletedCount + " entries for today");
 		} catch (Exception e) {
@@ -292,8 +296,8 @@ public class EntryController {
 		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 		String username = userDetails.getUsername();
 
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 		List<Entry> lastEntries = entryRepository.findLastEntryByUserForDay(username, startOfDay, endOfDay);
 
@@ -306,7 +310,7 @@ public class EntryController {
 			Entry lastEntry = lastEntries.get(0);
 			lastEntry.setDeleted(true);
 			lastEntry.setDeletedBy(username);
-			lastEntry.setDeletedAt(getCurrentTorontoTime());
+			lastEntry.setDeletedAt(timezoneHelper.getCurrentTorontoTime());
 			entryRepository.save(lastEntry);
 			logger.info("Undone last entry for user {}", username);
 			return ResponseEntity.ok("Last entry undone successfully");
@@ -364,16 +368,10 @@ public class EntryController {
 		return null;
 	}
 
-	// Helper methods for Toronto timezone
-	private LocalDateTime getCurrentTorontoTime() {
-		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
-	}
-
-	private LocalDateTime getTorontoStartOfDay() {
-		return LocalDate.now(TORONTO_ZONE).atStartOfDay();
-	}
-
-	private LocalDateTime getTorontoEndOfDay() {
-		return LocalDate.now(TORONTO_ZONE).plusDays(1).atStartOfDay();
+	// Debug endpoint
+	@GetMapping("/api/debug/timezone")
+	@ResponseBody
+	public ResponseEntity<String> debugTimezone() {
+		return ResponseEntity.ok(timezoneHelper.getTimezoneDebugInfo());
 	}
 }

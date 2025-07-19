@@ -1,9 +1,17 @@
 package com.tsc.model;
 
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.time.ZoneId;
-import jakarta.persistence.*;
+import java.time.ZonedDateTime;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @Entity
 public class Entry {
@@ -39,16 +47,17 @@ public class Entry {
 		super();
 		this.gate = gate;
 		this.entryType = entryType;
-		// Convert the timestamp to Toronto timezone
-		this.timestamp = convertToTorontoTime(timestamp);
+		// Store the timestamp as provided (should already be Toronto time from controller)
+		this.timestamp = timestamp;
 		this.createdBy = createdBy;
 	}
 
-	// PrePersist hook to ensure timestamp is always in Toronto timezone
+	// PrePersist hook - only set if null
 	@PrePersist
 	public void prePersist() {
 		if (this.timestamp == null) {
-			this.timestamp = getCurrentTorontoTime();
+			// Get current Toronto time regardless of server timezone
+			this.timestamp = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
 		}
 	}
 
@@ -56,27 +65,9 @@ public class Entry {
 	@PreUpdate
 	public void preUpdate() {
 		if (this.isDeleted && this.deletedAt == null) {
-			this.deletedAt = getCurrentTorontoTime();
+			// Get current Toronto time regardless of server timezone
+			this.deletedAt = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
 		}
-	}
-
-	// Helper method to get current Toronto time
-	private static LocalDateTime getCurrentTorontoTime() {
-		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
-	}
-
-	// Helper method to convert any LocalDateTime to Toronto timezone
-	private static LocalDateTime convertToTorontoTime(LocalDateTime dateTime) {
-		// If the input is already assumed to be in Toronto time, return as is
-		// Otherwise, convert from system default to Toronto
-		if (dateTime == null) {
-			return getCurrentTorontoTime();
-		}
-		// Assume the input LocalDateTime is in system default timezone
-		ZonedDateTime systemZoned = dateTime.atZone(ZoneId.systemDefault());
-		// Convert to Toronto timezone
-		ZonedDateTime torontoZoned = systemZoned.withZoneSameInstant(TORONTO_ZONE);
-		return torontoZoned.toLocalDateTime();
 	}
 
 	// Getters and Setters
@@ -127,7 +118,8 @@ public class Entry {
 	public void setDeleted(boolean deleted) {
 		isDeleted = deleted;
 		if (deleted && this.deletedAt == null) {
-			this.deletedAt = getCurrentTorontoTime();
+			// Get current Toronto time regardless of server timezone
+			this.deletedAt = ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
 		}
 	}
 

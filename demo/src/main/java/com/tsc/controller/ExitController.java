@@ -22,19 +22,19 @@ import org.springframework.ui.Model;
 
 import com.tsc.model.ExitRecord;
 import com.tsc.repository.ExitRecordInterface;
+import com.tsc.util.TimezoneHelper;
 
 @Controller
 public class ExitController {
 
 	private static final Logger logger = LoggerFactory.getLogger(ExitController.class);
 	private final ExitRecordInterface repository;
+	private final TimezoneHelper timezoneHelper;
 	private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
 
-	// Toronto timezone
-	private static final ZoneId TORONTO_ZONE = ZoneId.of("America/Toronto");
-
-	public ExitController(ExitRecordInterface repository) {
+	public ExitController(ExitRecordInterface repository, TimezoneHelper timezoneHelper) {
 		this.repository = repository;
+		this.timezoneHelper = timezoneHelper;
 	}
 
 	@GetMapping("/exitIndex")
@@ -59,8 +59,10 @@ public class ExitController {
 		model.addAttribute("allGates", ALL_GATES);
 
 		// Get exit counts using optimized queries
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+
+		logger.info("Using Toronto time for exit counts - Start: {}, End: {}", startOfDay, endOfDay);
 
 		if (isAdmin) {
 			// Admin sees all lot counts using optimized query
@@ -151,8 +153,8 @@ public class ExitController {
 		model.addAttribute("selectedLot", selectedLot);
 
 		// Get updated counts using optimized query
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 		Map<String, Long> lotCounts = new HashMap<>();
 		// Initialize with zeros
@@ -212,8 +214,8 @@ public class ExitController {
 			repository.saveAll(exitRecords);
 
 			// Get updated count for this lot
-			LocalDateTime startOfDay = getTorontoStartOfDay();
-			LocalDateTime endOfDay = getTorontoEndOfDay();
+			LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+			LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 			Long updatedCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
 
 			Map<String, Object> response = new HashMap<>();
@@ -234,8 +236,8 @@ public class ExitController {
 	@ResponseBody
 	public ResponseEntity<Map<String, Object>> getExitCounts(HttpServletRequest request) {
 		try {
-			LocalDateTime startOfDay = getTorontoStartOfDay();
-			LocalDateTime endOfDay = getTorontoEndOfDay();
+			LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+			LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
 			UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 			boolean isAdmin = userDetails.getAuthorities().stream()
@@ -300,8 +302,8 @@ public class ExitController {
 		model.addAttribute("selectedLot", selectedLot);
 
 		// Get only today's records using optimized query
-		LocalDateTime startOfDay = getTorontoStartOfDay();
-		LocalDateTime endOfDay = getTorontoEndOfDay();
+		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 		model.addAttribute("records", repository.findExitsForDay(startOfDay, endOfDay));
 
 		return "success";
@@ -330,27 +332,22 @@ public class ExitController {
 	 */
 	private String convertLotNameForExit(String lotName) {
 		switch (lotName) {
-			case "Lot A": return "A";
-			case "Lot B": return "B";
-			case "Lot C": return "C";
-			case "Lot D": return "D";
-			case "SNP": return "SNP";
-			case "Family Area": return "Family";
-			case "Uber/Taxi": return "Uber/Taxi";
-			default: return lotName;
+			case "Lot A":
+				return "A";
+			case "Lot B":
+				return "B";
+			case "Lot C":
+				return "C";
+			case "Lot D":
+				return "D";
+			case "SNP":
+				return "SNP";
+			case "Family Area":
+				return "Family";
+			case "Uber/Taxi":
+				return "Uber/Taxi";
+			default:
+				return lotName;
 		}
-	}
-
-	// Helper methods for Toronto timezone
-	private LocalDateTime getCurrentTorontoTime() {
-		return ZonedDateTime.now(TORONTO_ZONE).toLocalDateTime();
-	}
-
-	private LocalDateTime getTorontoStartOfDay() {
-		return LocalDate.now(TORONTO_ZONE).atStartOfDay();
-	}
-
-	private LocalDateTime getTorontoEndOfDay() {
-		return LocalDate.now(TORONTO_ZONE).plusDays(1).atStartOfDay();
 	}
 }
