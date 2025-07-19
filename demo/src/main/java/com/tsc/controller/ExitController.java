@@ -2,352 +2,379 @@ package com.tsc.controller;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZonedDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import jakarta.servlet.http.Cookie;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.tsc.model.ExitRecord;
 import com.tsc.repository.ExitRecordInterface;
 import com.tsc.util.TimezoneHelper;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 public class ExitController {
 
-	private static final Logger logger = LoggerFactory.getLogger(ExitController.class);
-	private final ExitRecordInterface repository;
-	private final TimezoneHelper timezoneHelper;
-	private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
+    private static final Logger logger = LoggerFactory.getLogger(ExitController.class);
 
-	public ExitController(ExitRecordInterface repository, TimezoneHelper timezoneHelper) {
-		this.repository = repository;
-		this.timezoneHelper = timezoneHelper;
-	}
+    private final ExitRecordInterface repository;
+    private final TimezoneHelper timezoneHelper;
 
-	@GetMapping("/exitIndex")
-	public String index(Model model, HttpServletRequest request) {
-		logger.info("Accessing exit index page");
+    private static final List<String> ALL_GATES = Arrays.asList("Lot A", "Lot B", "Lot C", "Lot D", "SNP", "Family Area", "Uber/Taxi");
 
-		// Get user info
-		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		boolean isAdmin = userDetails.getAuthorities().stream()
-				.anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-		model.addAttribute("isAdmin", isAdmin);
-		model.addAttribute("username", userDetails.getUsername());
-		model.addAttribute("role", userDetails.getAuthorities().stream()
-				.map(auth -> auth.getAuthority().replace("ROLE_", ""))
-				.findFirst()
-				.orElse("USER"));
+    // Constructor
+    public ExitController(ExitRecordInterface repository, TimezoneHelper timezoneHelper) {
+        this.repository = repository;
+        this.timezoneHelper = timezoneHelper;
+    }
 
-		// Get selected lot from cookie
-		String selectedLot = getSelectedLot(request);
-		logger.info("Selected lot from cookie: {}", selectedLot);
-		model.addAttribute("selectedLot", selectedLot);
-		model.addAttribute("allGates", ALL_GATES);
+    @GetMapping("/exitIndex")
+    public String index(Model model, HttpServletRequest request) {
+        logger.info("Accessing exit index page");
 
-		// Get exit counts using optimized queries
-		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
-		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+        // Get user info
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("isAdmin", isAdmin);
+        model.addAttribute("username", userDetails.getUsername());
+        model.addAttribute("role", userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .findFirst()
+                .orElse("USER"));
 
-		logger.info("Using Toronto time for exit counts - Start: {}, End: {}", startOfDay, endOfDay);
+        // Get selected lot from cookie
+        String selectedLot = getSelectedLot(request);
+        logger.info("Selected lot from cookie: {}", selectedLot);
+        model.addAttribute("selectedLot", selectedLot);
+        model.addAttribute("allGates", ALL_GATES);
 
-		if (isAdmin) {
-			// Admin sees all lot counts using optimized query
-			Map<String, Long> allLotCounts = new HashMap<>();
-			// Initialize with zeros
-			allLotCounts.put("A", 0L);
-			allLotCounts.put("B", 0L);
-			allLotCounts.put("C", 0L);
-			allLotCounts.put("D", 0L);
-			allLotCounts.put("SNP", 0L);
-			allLotCounts.put("Family", 0L);
-			allLotCounts.put("Uber/Taxi", 0L);
+        // Get exit counts using Toronto timezone for date ranges
+        LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+        LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
-			// Get actual counts
-			List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
-			for (Object[] row : counts) {
-				String lot = (String) row[0];
-				Long count = (Long) row[1];
-				allLotCounts.put(lot, count);
-			}
-			model.addAttribute("allLotCounts", allLotCounts);
-		} else if (selectedLot != null) {
-			// Regular user sees only their selected lot count
-			String exitLotName = convertLotNameForExit(selectedLot);
-			Long selectedLotCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
-			model.addAttribute("selectedLotCount", selectedLotCount != null ? selectedLotCount : 0L);
-		}
+        logger.info("Using Toronto time for exit counts - Start: {}, End: {}", startOfDay, endOfDay);
 
-		return "indexExit";
-	}
+        if (isAdmin) {
+            // Admin sees all lot counts using optimized query
+            Map<String, Long> allLotCounts = new HashMap<>();
+            // Initialize with zeros
+            allLotCounts.put("A", 0L);
+            allLotCounts.put("B", 0L);
+            allLotCounts.put("C", 0L);
+            allLotCounts.put("D", 0L);
+            allLotCounts.put("SNP", 0L);
+            allLotCounts.put("Family", 0L);
+            allLotCounts.put("Uber/Taxi", 0L);
 
-	@PostMapping("/confirmLot")
-	public String confirmLot(@RequestParam String lot, Model model, HttpServletRequest request) {
-		logger.info("Confirming lot selection: {}", lot);
+            // Get actual counts
+            List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
+            for (Object[] row : counts) {
+                String lot = (String) row[0];
+                Long count = (Long) row[1];
+                allLotCounts.put(lot, count);
+            }
+            model.addAttribute("allLotCounts", allLotCounts);
+        } else if (selectedLot != null) {
+            // Regular user sees only their selected lot count
+            String exitLotName = convertLotNameForExit(selectedLot);
+            Long selectedLotCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
+            model.addAttribute("selectedLotCount", selectedLotCount != null ? selectedLotCount : 0L);
+        }
 
-		// Get user info
-		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		model.addAttribute("username", userDetails.getUsername());
-		model.addAttribute("role", userDetails.getAuthorities().stream()
-				.map(auth -> auth.getAuthority().replace("ROLE_", ""))
-				.findFirst()
-				.orElse("USER"));
+        return "indexExit";
+    }
 
-		// Use the selected lot from cookie
-		String selectedLot = getSelectedLot(request);
-		if (selectedLot == null) {
-			logger.warn("No lot selected from cookie, redirecting to exit index");
-			return "redirect:/exitIndex";
-		}
+    @PostMapping("/confirmLot")
+    public String confirmLot(@RequestParam String lot, Model model, HttpServletRequest request) {
+        logger.info("Confirming lot selection: {}", lot);
 
-		model.addAttribute("lot", selectedLot);
-		model.addAttribute("selectedLot", selectedLot);
+        // Get user info
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        model.addAttribute("username", userDetails.getUsername());
+        model.addAttribute("role", userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .findFirst()
+                .orElse("USER"));
 
-		return "logExit";
-	}
+        // Use the selected lot from cookie
+        String selectedLot = getSelectedLot(request);
+        if (selectedLot == null) {
+            logger.warn("No lot selected from cookie, redirecting to exit index");
+            return "redirect:/exitIndex";
+        }
 
-	@PostMapping("/exit")
-	public String logExit(@RequestParam(required = false) String lot,
-						  @RequestParam(defaultValue = "1") int count,
-						  Model model, HttpServletRequest request) {
+        model.addAttribute("lot", selectedLot);
+        model.addAttribute("selectedLot", selectedLot);
 
-		// Get user info
-		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		model.addAttribute("username", userDetails.getUsername());
-		model.addAttribute("role", userDetails.getAuthorities().stream()
-				.map(auth -> auth.getAuthority().replace("ROLE_", ""))
-				.findFirst()
-				.orElse("USER"));
+        return "logExit";
+    }
 
-		// Use selected lot from cookie
-		String selectedLot = getSelectedLot(request);
-		if (selectedLot == null) {
-			logger.warn("No lot selected from cookie for exit logging");
-			return "redirect:/exitIndex";
-		}
+    @PostMapping("/exit")
+    public String logExit(@RequestParam(required = false) String lot,
+            @RequestParam(defaultValue = "1") int count,
+            Model model, HttpServletRequest request) {
 
-		logger.info("Logging {} exits for lot: {}", count, selectedLot);
+        // Get user info
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        model.addAttribute("username", userDetails.getUsername());
+        model.addAttribute("role", userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .findFirst()
+                .orElse("USER"));
 
-		// Convert lot name to match the exit record format
-		String exitLotName = convertLotNameForExit(selectedLot);
+        // Use selected lot from cookie
+        String selectedLot = getSelectedLot(request);
+        if (selectedLot == null) {
+            logger.warn("No lot selected from cookie for exit logging");
+            return "redirect:/exitIndex";
+        }
 
-		// Save exits
-		for (int i = 0; i < count; i++) {
-			repository.save(new ExitRecord(exitLotName));
-		}
+        logger.info("Logging {} exits for lot: {}", count, selectedLot);
 
-		model.addAttribute("lot", selectedLot);
-		model.addAttribute("selectedLot", selectedLot);
+        // Convert lot name to match the exit record format
+        String exitLotName = convertLotNameForExit(selectedLot);
 
-		// Get updated counts using optimized query
-		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
-		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+        // Save exits - ExitRecord constructor will handle timezone conversion automatically
+        for (int i = 0; i < count; i++) {
+            repository.save(new ExitRecord(exitLotName));
+        }
 
-		Map<String, Long> lotCounts = new HashMap<>();
-		// Initialize with zeros
-		lotCounts.put("A", 0L);
-		lotCounts.put("B", 0L);
-		lotCounts.put("C", 0L);
-		lotCounts.put("D", 0L);
-		lotCounts.put("SNP", 0L);
-		lotCounts.put("Family", 0L);
-		lotCounts.put("Uber/Taxi", 0L);
+        model.addAttribute("lot", selectedLot);
+        model.addAttribute("selectedLot", selectedLot);
 
-		// Get actual counts
-		List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
-		for (Object[] row : counts) {
-			String lotName = (String) row[0];
-			Long lotCount = (Long) row[1];
-			lotCounts.put(lotName, lotCount);
-		}
+        // Get updated counts using Toronto timezone for date ranges
+        LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+        LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
-		model.addAttribute("lotCounts", lotCounts);
+        Map<String, Long> lotCounts = new HashMap<>();
+        // Initialize with zeros
+        lotCounts.put("A", 0L);
+        lotCounts.put("B", 0L);
+        lotCounts.put("C", 0L);
+        lotCounts.put("D", 0L);
+        lotCounts.put("SNP", 0L);
+        lotCounts.put("Family", 0L);
+        lotCounts.put("Uber/Taxi", 0L);
 
-		return "logExit";
-	}
+        // Get actual counts
+        List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
+        for (Object[] row : counts) {
+            String lotName = (String) row[0];
+            Long lotCount = (Long) row[1];
+            lotCounts.put(lotName, lotCount);
+        }
 
-	@PostMapping("/api/logExit")
-	@ResponseBody
-	public ResponseEntity<Map<String, Object>> logExitApi(@RequestParam(defaultValue = "1") int count,
-														  HttpServletRequest request) {
+        model.addAttribute("lotCounts", lotCounts);
 
-		// Get user info
-		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		String username = userDetails.getUsername();
+        return "logExit";
+    }
 
-		// Use selected lot from cookie
-		String selectedLot = getSelectedLot(request);
-		if (selectedLot == null) {
-			logger.warn("No lot selected from cookie for exit logging");
-			return ResponseEntity.badRequest().body(Map.of("error", "No lot selected"));
-		}
+    @PostMapping("/api/logExit")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> logExitApi(@RequestParam(defaultValue = "1") int count,
+            HttpServletRequest request) {
 
-		if (count <= 0 || count > 50) {
-			logger.error("Invalid count: {}", count);
-			return ResponseEntity.badRequest().body(Map.of("error", "Invalid count"));
-		}
+        // Get user info
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
 
-		logger.info("Logging {} exits for lot: {} by user: {}", count, selectedLot, username);
+        // Use selected lot from cookie
+        String selectedLot = getSelectedLot(request);
+        if (selectedLot == null) {
+            logger.warn("No lot selected from cookie for exit logging");
+            return ResponseEntity.badRequest().body(Map.of("error", "No lot selected"));
+        }
 
-		try {
-			// Convert lot name to match the exit record format
-			String exitLotName = convertLotNameForExit(selectedLot);
+        if (count <= 0 || count > 50) {
+            logger.error("Invalid count: {}", count);
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid count"));
+        }
 
-			// Save all exits in batch for better performance
-			List<ExitRecord> exitRecords = new ArrayList<>();
-			for (int i = 0; i < count; i++) {
-				exitRecords.add(new ExitRecord(exitLotName));
-			}
-			repository.saveAll(exitRecords);
+        logger.info("Logging {} exits for lot: {} by user: {}", count, selectedLot, username);
 
-			// Get updated count for this lot
-			LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
-			LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
-			Long updatedCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
+        try {
+            // Convert lot name to match the exit record format
+            String exitLotName = convertLotNameForExit(selectedLot);
 
-			Map<String, Object> response = new HashMap<>();
-			response.put("success", true);
-			response.put("message", "Exits logged successfully");
-			response.put("lot", selectedLot);
-			response.put("count", count);
-			response.put("totalCount", updatedCount != null ? updatedCount : 0);
+            // Save all exits in batch for better performance
+            // Note: ExitRecord constructor will automatically convert system time to Toronto time
+            List<ExitRecord> exitRecords = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                exitRecords.add(new ExitRecord(exitLotName));
+            }
+            repository.saveAll(exitRecords);
 
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			logger.error("Failed to log exits: {}", e.getMessage());
-			return ResponseEntity.status(500).body(Map.of("error", "Failed to log exits: " + e.getMessage()));
-		}
-	}
+            // Get updated count for this lot - using Toronto timezone for date range
+            LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+            LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+            Long updatedCount = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
 
-	@GetMapping("/api/exitCounts")
-	@ResponseBody
-	public ResponseEntity<Map<String, Object>> getExitCounts(HttpServletRequest request) {
-		try {
-			LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
-			LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Exits logged successfully");
+            response.put("lot", selectedLot);
+            response.put("count", count);
+            response.put("totalCount", updatedCount != null ? updatedCount : 0);
 
-			UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-			boolean isAdmin = userDetails.getAuthorities().stream()
-					.anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Failed to log exits: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to log exits: " + e.getMessage()));
+        }
+    }
 
-			Map<String, Object> response = new HashMap<>();
+    @GetMapping("/api/exitCounts")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getExitCounts(HttpServletRequest request) {
+        try {
+            // Use Toronto timezone for date range calculations
+            LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+            LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
 
-			if (isAdmin) {
-				// Admin gets all lot counts
-				Map<String, Long> allLotCounts = new HashMap<>();
-				// Initialize with zeros
-				allLotCounts.put("A", 0L);
-				allLotCounts.put("B", 0L);
-				allLotCounts.put("C", 0L);
-				allLotCounts.put("D", 0L);
-				allLotCounts.put("SNP", 0L);
-				allLotCounts.put("Family", 0L);
-				allLotCounts.put("Uber/Taxi", 0L);
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                    .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
 
-				// Get actual counts
-				List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
-				for (Object[] row : counts) {
-					String lot = (String) row[0];
-					Long count = (Long) row[1];
-					allLotCounts.put(lot, count);
-				}
-				response.put("allLotCounts", allLotCounts);
-				response.put("isAdmin", true);
-			} else {
-				// Regular user gets only their selected lot count
-				String selectedLot = getSelectedLot(request);
-				if (selectedLot != null) {
-					String exitLotName = convertLotNameForExit(selectedLot);
-					Long count = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
-					response.put("selectedLotCount", count != null ? count : 0);
-					response.put("selectedLot", selectedLot);
-				}
-				response.put("isAdmin", false);
-			}
+            Map<String, Object> response = new HashMap<>();
 
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			logger.error("Failed to get exit counts: {}", e.getMessage());
-			return ResponseEntity.status(500).body(Map.of("error", "Failed to get exit counts"));
-		}
-	}
+            if (isAdmin) {
+                // Admin gets all lot counts
+                Map<String, Long> allLotCounts = new HashMap<>();
+                // Initialize with zeros
+                allLotCounts.put("A", 0L);
+                allLotCounts.put("B", 0L);
+                allLotCounts.put("C", 0L);
+                allLotCounts.put("D", 0L);
+                allLotCounts.put("SNP", 0L);
+                allLotCounts.put("Family", 0L);
+                allLotCounts.put("Uber/Taxi", 0L);
 
-	@GetMapping("/exitLogs")
-	public String exitLogs(Model model, HttpServletRequest request) {
-		logger.info("Accessing exit logs page");
+                // Get actual counts
+                List<Object[]> counts = repository.countAllByLotForDay(startOfDay, endOfDay);
+                for (Object[] row : counts) {
+                    String lot = (String) row[0];
+                    Long count = (Long) row[1];
+                    allLotCounts.put(lot, count);
+                }
+                response.put("allLotCounts", allLotCounts);
+                response.put("isAdmin", true);
+            } else {
+                // Regular user gets only their selected lot count
+                String selectedLot = getSelectedLot(request);
+                if (selectedLot != null) {
+                    String exitLotName = convertLotNameForExit(selectedLot);
+                    Long count = repository.countByLotForDay(exitLotName, startOfDay, endOfDay);
+                    response.put("selectedLotCount", count != null ? count : 0);
+                    response.put("selectedLot", selectedLot);
+                }
+                response.put("isAdmin", false);
+            }
 
-		// Get user info
-		UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		model.addAttribute("username", userDetails.getUsername());
-		model.addAttribute("role", userDetails.getAuthorities().stream()
-				.map(auth -> auth.getAuthority().replace("ROLE_", ""))
-				.findFirst()
-				.orElse("USER"));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Failed to get exit counts: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get exit counts"));
+        }
+    }
 
-		// Get selected lot from cookie
-		String selectedLot = getSelectedLot(request);
-		model.addAttribute("selectedLot", selectedLot);
+    @GetMapping("/exitLogs")
+    public String exitLogs(Model model, HttpServletRequest request) {
+        logger.info("Accessing exit logs page");
 
-		// Get only today's records using optimized query
-		LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
-		LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
-		model.addAttribute("records", repository.findExitsForDay(startOfDay, endOfDay));
+        // Get user info
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        model.addAttribute("username", userDetails.getUsername());
+        model.addAttribute("role", userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .findFirst()
+                .orElse("USER"));
 
-		return "success";
-	}
+        // Get selected lot from cookie
+        String selectedLot = getSelectedLot(request);
+        model.addAttribute("selectedLot", selectedLot);
 
-	/**
-	 * Get selected lot from cookie
-	 */
-	private String getSelectedLot(HttpServletRequest request) {
-		Cookie[] cookies = request.getCookies();
-		if (cookies != null) {
-			for (Cookie cookie : cookies) {
-				if ("selectedLot".equals(cookie.getName())) {
-					String lot = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
-					logger.info("Selected lot from cookie: {}", lot);
-					return lot;
-				}
-			}
-		}
-		logger.warn("No selectedLot cookie found");
-		return null;
-	}
+        // Get only today's records using Toronto timezone for date range
+        LocalDateTime startOfDay = timezoneHelper.getTorontoStartOfDay();
+        LocalDateTime endOfDay = timezoneHelper.getTorontoEndOfDay();
+        model.addAttribute("records", repository.findExitsForDay(startOfDay, endOfDay));
 
-	/**
-	 * Convert lot name from entry format to exit format
-	 */
-	private String convertLotNameForExit(String lotName) {
-		switch (lotName) {
-			case "Lot A":
-				return "A";
-			case "Lot B":
-				return "B";
-			case "Lot C":
-				return "C";
-			case "Lot D":
-				return "D";
-			case "SNP":
-				return "SNP";
-			case "Family Area":
-				return "Family";
-			case "Uber/Taxi":
-				return "Uber/Taxi";
-			default:
-				return lotName;
-		}
-	}
+        return "success";
+    }
+
+    /**
+     * Get selected lot from cookie
+     */
+    private String getSelectedLot(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("selectedLot".equals(cookie.getName())) {
+                    String lot = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
+                    logger.info("Selected lot from cookie: {}", lot);
+                    return lot;
+                }
+            }
+        }
+        logger.warn("No selectedLot cookie found");
+        return null;
+    }
+
+    /**
+     * Convert lot name from entry format to exit format
+     */
+    private String convertLotNameForExit(String lotName) {
+        switch (lotName) {
+            case "Lot A":
+                return "A";
+            case "Lot B":
+                return "B";
+            case "Lot C":
+                return "C";
+            case "Lot D":
+                return "D";
+            case "SNP":
+                return "SNP";
+            case "Family Area":
+                return "Family";
+            case "Uber/Taxi":
+                return "Uber/Taxi";
+            default:
+                return lotName;
+        }
+    }
+
+    // Debug endpoint for timezone testing
+    @GetMapping("/api/debug/exit-timezone")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> debugExitTimezone() {
+        Map<String, Object> debug = new HashMap<>();
+        debug.put("systemTimezone", ZoneId.systemDefault().toString());
+        debug.put("torontoTime", timezoneHelper.getCurrentTorontoTime());
+        debug.put("systemTime", LocalDateTime.now());
+        debug.put("utcTime", ZonedDateTime.now(ZoneId.of("UTC")).toLocalDateTime());
+        debug.put("timezoneInfo", timezoneHelper.getTimezoneDebugInfo());
+        debug.put("databaseTimestamp", timezoneHelper.getCurrentTimestampForDatabase());
+        debug.put("torontoStartOfDay", timezoneHelper.getTorontoStartOfDay());
+        debug.put("torontoEndOfDay", timezoneHelper.getTorontoEndOfDay());
+        return ResponseEntity.ok(debug);
+    }
 }
